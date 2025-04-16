@@ -78,4 +78,29 @@ export class FeedbackManager {
     zoneTick() {
         this.playSound('zone');
     }
+
+    handleEvent(data) {
+        if (data.type === "bullet_expired" && this.scene.bulletManager.bullets.has(data.id)) {
+            this.scene.bulletManager.pendingDeletes.add(data.id);
+        }
+
+        // play sound
+        if (data.type === "player_hit" && data.victim === this.scene.playerManager.id) {
+            this.localPlayerDamage(this.scene.playerManager);
+        }
+
+        if (data.type === "player_hit" && data.victim === this.scene.enemyManager.id) {
+            this.enemyPlayerDamage(this.scene.enemyManager);
+        }
+
+        if (data.type === "player_collision") {
+            this.scene.playerManager.collisionCorrectionTime = performance.now() + 75;
+            this.playersCollision(data);
+        }
+
+        if (data.type === "out_of_bounds" || data.type === "wall_collision") {
+            this.scene.playerManager.collisionCorrectionTime = performance.now() + 75;
+            this.scene.feedbackManager.wallCollision(data);
+        }
+    }
 }

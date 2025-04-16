@@ -1,4 +1,4 @@
-export class EnemyPlayer extends Phaser.GameObjects.Container {
+export class EnemyManager extends Phaser.GameObjects.Container {
     constructor(scene, player) {
         super(scene, player.centerX, player.centerY);
         this.type = "PLAYER";

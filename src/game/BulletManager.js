@@ -102,6 +102,38 @@ export class BulletManager {
         }
     }
 
+    updateFromServer(data) {
+        for (let obj of data) {
+            if (!obj) continue;
+            // existing bullet set targetX and targetY, signifies the server position of the bullet
+            if (obj.type === "BULLET" && this.bullets.has(obj.id) && !this.pendingDeletes.has(obj.id)) {
+                let bullet = this.bullets.get(obj.id);
+                bullet.targetX = obj.centerX;
+                bullet.targetY = obj.centerY;
+            }
+
+            // new bullet
+            if (obj.type === "BULLET" && !this.bullets.has(obj.id)) {
+                const bullet = this.bulletPool.get();
+                if (!bullet) return;
+
+                bullet.setActive(true)
+                    .setVisible(true)
+                    .setPosition(obj.centerX, obj.centerY)
+                    .setFillStyle(0xffff00)
+                    .setRadius(obj.radius);
+
+                bullet.velocityX = Math.cos(obj.angle) * obj.speed;
+                bullet.velocityY = Math.sin(obj.angle) * obj.speed;
+                bullet.targetX = null;
+                bullet.targetY = null;
+                bullet.playerId = obj.player;
+
+                this.bullets.set(obj.id, bullet);
+            }
+        }
+    }
+
     distance(targetX, x, targetY, y) {
         const dx = targetX - x;
         const dy = targetY - y;

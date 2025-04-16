@@ -1,11 +1,13 @@
 import {BulletManager} from "./BulletManager.js";
 import {LocalPlayer} from "./LocalPlayer.js";
-import {EnemyPlayer} from "./EnemyPlayer.js";
+import {EnemyManager} from "./EnemyManager.js";
 import {FeedbackManager} from "../components/FeedbackManager.js";
 import {ZoneManager} from "./ZoneManager.js";
 import {WallBlock} from "./WallBlock.js";
 import SockJS from 'sockjs-client';
 import {Client} from '@stomp/stompjs';
+import {GameEventRouter} from "../components/GameEventRouter.js";
+import {WebSocketClientInstance} from "../components/WebSocketClient.js";
 
 export class GameScene extends Phaser.Scene {
     constructor() {
@@ -30,53 +32,18 @@ export class GameScene extends Phaser.Scene {
     create() {
         this.graphics = this.add.graphics();
         this.playerTreeData = null;
-        this.bulletTreeData = null;
         this.wallTreeData = null;
         this.playerManager = null;
         this.enemyManager = null;
         this.bulletManager = null;
         this.zoneManager = new ZoneManager(this, 960, 540, 175);
         this.feedbackManager = new FeedbackManager(this);
+        this.router = new GameEventRouter(this, this.uuid);
+        WebSocketClientInstance.connect(this.uuid);
         this.isReady = false;
         this.barriers = new Map();
         this.opponents = new Map();
         this.wallblocks = new Map();
-
-        const socket = new SockJS('http://localhost:8080/ws');
-        const stompClient = new Client({
-            webSocketFactory: () => socket,
-            debug: str => console.log('[STOMP]', str),
-            reconnectDelay: 5000
-        });
-
-
-        stompClient.onConnect = () => {
-            stompClient.subscribe(`/topic/${this.uuid}`, (message) => {
-                const data = JSON.parse(message.body);
-                if (data.type === "bullet_expired" && this.bulletManager.bullets.has(data.id)) {
-                    this.bulletManager.pendingDeletes.add(data.id);
-                }
-
-                // play sound
-                if (data.type === "player_hit" && data.victim === this.playerManager.id) {
-                    this.feedbackManager.localPlayerDamage(this.playerManager);
-                }
-
-                if (data.type === "player_hit" && data.victim === this.enemyManager.id) {
-                    this.feedbackManager.enemyPlayerDamage(this.enemyManager);
-                }
-
-                if (data.type === "player_collision") {
-                    this.playerManager.collisionCorrectionTime = performance.now() + 75;
-                    this.feedbackManager.playersCollision(data);
-                }
-
-                if (data.type === "out_of_bounds" || data.type === "wall_collision") {
-                    this.playerManager.collisionCorrectionTime = performance.now() + 75;
-                    this.feedbackManager.wallCollision(data);
-                }
-            });
-        };
 
         fetch(`http://localhost:8080/api/quadtree?uuid=${this.uuid}`, {
             method: "POST"
@@ -119,10 +86,23 @@ export class GameScene extends Phaser.Scene {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(player)
-            }).then(() => {
+            }).then(async() => {
+                //todo: gather walls and create wallBlocks / barriers
+                const response = await fetch(`http://localhost:8080/api/quadtree/${this.uuid}/wall`)
+                const treeData = await response.json();
+                this.wallTreeData = treeData;
+                for (let obj of treeData) {
+                    if (!obj) continue;
+                    if (obj.type === "WALL" && !this.wallblocks.has(obj.id)) {
+                        const wallBounds = new Phaser.Geom.Rectangle(obj.bounds.x, obj.bounds.y, obj.bounds.width, obj.bounds.height);
+                        this.barriers.set(obj.id, wallBounds);
+                        this.wallblocks.set(obj.id, new WallBlock(this, obj.bounds.x, obj.bounds.y, obj.bounds.width, obj.bounds.height, obj.id));
+                    }
+                }
+
                 this.playerManager = new LocalPlayer(this, player, this.uuid)
                 this.bulletManager = new BulletManager(this, this.uuid);
-                this.enemyManager = new EnemyPlayer(this, opponent);
+                this.enemyManager = new EnemyManager(this, opponent);
                 console.log("setup complete")
                 this.isReady = true;
             })
@@ -147,9 +127,6 @@ export class GameScene extends Phaser.Scene {
         this.pointer = this.input.activePointer;
 
         setInterval(() => this.syncPlayersServer(this), 50);
-        setInterval(() => this.syncWallServer(this), 50);
-        setInterval(() => this.syncBulletServer(this), 50);
-        stompClient.activate();
     }
 
     async syncPlayersServer() {
@@ -162,35 +139,14 @@ export class GameScene extends Phaser.Scene {
         }
     }
 
-    async syncBulletServer() {
-        const response = await fetch(`http://localhost:8080/api/quadtree/${this.uuid}/bullet`)
-        const treeData = await response.json();
-        this.bulletTreeData = treeData;
-    }
-
-    async syncWallServer() {
-        const response = await fetch(`http://localhost:8080/api/quadtree/${this.uuid}/wall`)
-        const treeData = await response.json();
-        this.wallTreeData = treeData;
-    }
-
     update() {
         if (!this.isReady) return;
         this.playerManager.updateInput(this.keys, this.pointer);
 
-        // Redraw player and line
         this.graphics.clear();
 
         if (this.playerTreeData) {
             this.drawPlayerTree(this.graphics, this.playerTreeData);
-        }
-
-        if (this.bulletTreeData) {
-            this.drawBulletTree(this.graphics, this.bulletTreeData);
-        }
-
-        if (this.wallTreeData) {
-            this.drawWallTree(this.graphics, this.wallTreeData, this);
         }
 
         this.bulletManager.update(this.barriers, this.opponents);
@@ -210,75 +166,5 @@ export class GameScene extends Phaser.Scene {
                 this.enemyManager.drawEnemy(obj);
             }
         }
-    }
-
-    drawWallTree(g, tree, scene) {
-        for (let obj of tree) {
-            if (!obj) continue;
-            if (obj.type === "ZONE") {
-                scene.zoneManager.updateFromServer(obj);
-            }
-
-            if (obj.type === "WALL" && !scene.wallblocks.has(obj.id)) {
-                const wallBounds = new Phaser.Geom.Rectangle(obj.bounds.x, obj.bounds.y, obj.bounds.width, obj.bounds.height);
-                this.barriers.set(obj.id, wallBounds);
-                scene.wallblocks.set(obj.id, new WallBlock(scene, obj.bounds.x, obj.bounds.y, obj.bounds.width, obj.bounds.height, obj.id));
-            }
-        }
-    }
-
-    //todo: update to draw each tree (player, wall, bullet)
-    drawBulletTree(g, tree) {
-        for (let obj of tree) {
-            if (!obj) continue;
-            // existing bullet set targetX and targetY, signifies the server position of the bullet
-            if (obj.type === "BULLET" && this.bulletManager.bullets.has(obj.id) && !this.bulletManager.pendingDeletes.has(obj.id)) {
-                let bullet = this.bulletManager.bullets.get(obj.id);
-                bullet.targetX = obj.centerX;
-                bullet.targetY = obj.centerY;
-            }
-
-            // new bullet
-            if (obj.type === "BULLET" && !this.bulletManager.bullets.has(obj.id)) {
-                const bullet = this.bulletManager.bulletPool.get();
-                if (!bullet) return;
-
-                bullet.setActive(true)
-                    .setVisible(true)
-                    .setPosition(obj.centerX, obj.centerY)
-                    .setFillStyle(0xffff00)
-                    .setRadius(obj.radius);
-
-                bullet.velocityX = Math.cos(obj.angle) * obj.speed;
-                bullet.velocityY = Math.sin(obj.angle) * obj.speed;
-                bullet.targetX = null;
-                bullet.targetY = null;
-                bullet.playerId = obj.player;
-
-                this.bulletManager.bullets.set(obj.id, bullet);
-            }
-        }
-    }
-
-    drawZone(zone, g, scene) {
-        g.lineStyle(2, 0xffffff); // thickness = 2, color = white
-        g.strokeCircle(zone.centerX, zone.centerY, zone.radius);
-        const progress = zone.time / 10;
-
-        if (progress > 0) {
-            scene.feedbackManager.zoneTick();
-        }
-
-        g.lineStyle(4, 0x00ff00);
-        g.beginPath();
-        g.arc(zone.centerX, zone.centerY, zone.radius, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress, false);
-        g.strokePath();
-    }
-
-    drawWall(wall, g) {
-        const {x, y, width, height} = wall.bounds;
-
-        g.fillStyle(0x888888); // grey fill color
-        g.fillRect(x, y, width, height); // draw the wall
     }
 }
