@@ -92,7 +92,7 @@ export class BulletManager {
             const nY = bullet.y + bullet.velocityY;
 
             if (bullet.targetX !== null && bullet.targetY !== null
-                && this.distance(bullet.targetX, nX, bullet.targetY, nY) > 5) {
+                && this.distance(bullet.targetX, nX, bullet.targetY, nY) > 10) {
                 bullet.setPosition(Phaser.Math.Linear(nX, bullet.targetX, 0.1),
                     Phaser.Math.Linear(nY, bullet.targetY, 0.1));
                 continue;

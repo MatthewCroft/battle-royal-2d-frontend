@@ -6,6 +6,8 @@ export class GameEventRouter {
         this.uuid = uuid;
 
         const base = `/topic/${uuid}`;
+
+        WebSocketClientInstance.subscribe(`${base}/player/correction`, this.handlePlayerCorrection.bind(this));
         WebSocketClientInstance.subscribe(`${base}/player`, this.handlePlayer.bind(this));
         WebSocketClientInstance.subscribe(`${base}/zone`, this.handleZone.bind(this));
         WebSocketClientInstance.subscribe(`${base}/bullets`, this.handleBullet.bind(this));
@@ -13,7 +15,21 @@ export class GameEventRouter {
     }
 
     handlePlayer(message) {
+        const data = JSON.parse(message.body);
+        if (data.id === this.scene.playerManager.id) {
+            this.scene.playerManager.updateFromServer(data);
+        } else {
+            this.scene.enemyManager.updateFromServer(data);
+        }
+    }
 
+    handlePlayerCorrection(message) {
+        const data = JSON.parse(message.body);
+        if (data.id === this.scene.playerManager.id) {
+            this.scene.playerManager.updateFromServer(data, true);
+        } else {
+            this.scene.enemyManager.updateFromServer(data);
+        }
     }
 
     handleBullet(message) {

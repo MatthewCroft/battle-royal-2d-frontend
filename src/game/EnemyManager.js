@@ -22,7 +22,7 @@ export class EnemyManager extends Phaser.GameObjects.Container {
         scene.add.existing(this);
     }
 
-    drawEnemy(updatedEnemy) {
+    updateFromServer(updatedEnemy) {
         const length = 60;
         this.angle = updatedEnemy.angle;
         const endX = Math.cos(this.angle) * length;

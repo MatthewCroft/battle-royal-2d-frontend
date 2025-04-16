@@ -24,7 +24,15 @@ export class LocalPlayer extends Phaser.GameObjects.Container {
         scene.add.existing(this);
     }
 
-    updateFromServer(serverPlayer) {
+    updateFromServer(serverPlayer, correction = false) {
+        if (correction) {
+            this.x = serverPlayer.centerX;
+            this.y = serverPlayer.centerY;
+            const angleDiff = Phaser.Math.Angle.Wrap(serverPlayer.angle - this.angle);
+            this.angle += angleDiff * 0.1;
+            return;
+        }
+
         const dx = serverPlayer.centerX - this.x;
         const dy = serverPlayer.centerY - this.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
@@ -32,7 +40,6 @@ export class LocalPlayer extends Phaser.GameObjects.Container {
         if (distance > 5) {
             this.x = Phaser.Math.Linear(this.x, serverPlayer.centerX, 0.2);
             this.y = Phaser.Math.Linear(this.y, serverPlayer.centerY, 0.2);
-            console.log("player position corrected");
         } else {
             this.x = serverPlayer.centerX;
             this.y = serverPlayer.centerY;
@@ -40,17 +47,6 @@ export class LocalPlayer extends Phaser.GameObjects.Container {
 
         const angleDiff = Phaser.Math.Angle.Wrap(serverPlayer.angle - this.angle);
         this.angle += angleDiff * 0.1; // interpolation step
-        // const pointerDX = serverPlayer.- this.pointerX;
-        // const pointerDY = serverPlayer.pointerY - this.pointerY;
-        // const pointerDistance = Math.sqrt(pointerDX * pointerDX + pointerDY * pointerDY);
-        //
-        // if (pointerDistance > 5) {
-        //     this.pointerX = Phaser.Math.Linear(this.pointerX, serverPlayer.pointerX, 0.2);
-        //     this.pointerY = Phaser.Math.Linear(this.pointerY, serverPlayer.pointerY, 0.2);
-        // } else {
-        //     this.pointerX = serverPlayer.pointerX;
-        //     this.pointerY = serverPlayer.pointerY;
-        // }
     }
 
     updateInput(keys, pointer) {
@@ -69,6 +65,7 @@ export class LocalPlayer extends Phaser.GameObjects.Container {
         const angle = Phaser.Math.Angle.Between(this.x, this.y, pointer.worldX, pointer.worldY);
         const withinBounds = currentX >= 0 && currentX <= 1920 &&
             currentY >= 0 && currentY <= 1080;
+
         if (withinBounds && (parseInt(currentX) !== parseInt(prevX) || parseInt(currentY) !== parseInt(prevY) ||
             parseFloat(this.angle) !== parseFloat(angle))) {
             this.sendPlayerMoveUpdate(currentX, currentY, angle);

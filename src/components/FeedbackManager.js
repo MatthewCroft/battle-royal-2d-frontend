@@ -94,12 +94,12 @@ export class FeedbackManager {
         }
 
         if (data.type === "player_collision") {
-            this.scene.playerManager.collisionCorrectionTime = performance.now() + 75;
+            this.scene.playerManager.collisionCorrectionTime = performance.now() + 100;
             this.playersCollision(data);
         }
 
         if (data.type === "out_of_bounds" || data.type === "wall_collision") {
-            this.scene.playerManager.collisionCorrectionTime = performance.now() + 75;
+            this.scene.playerManager.collisionCorrectionTime = performance.now() + 100;
             this.scene.feedbackManager.wallCollision(data);
         }
     }

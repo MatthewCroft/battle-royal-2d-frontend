@@ -126,18 +126,18 @@ export class GameScene extends Phaser.Scene {
         // this.input.on("pointermove", async (pointer) => movePlayerPointer(pointer));
         this.pointer = this.input.activePointer;
 
-        setInterval(() => this.syncPlayersServer(this), 50);
+        //setInterval(() => this.syncPlayersServer(this), 50);
     }
 
-    async syncPlayersServer() {
-        const response = await fetch(`http://localhost:8080/api/quadtree/${this.uuid}/player`)
-        const treeData = await response.json();
-        this.playerTreeData = treeData;
-        const serverPlayer = treeData.find(object => object && object.id === this.playerManager.id)
-        if (serverPlayer) {
-            this.playerManager.updateFromServer(serverPlayer);
-        }
-    }
+    // async syncPlayersServer() {
+    //     const response = await fetch(`http://localhost:8080/api/quadtree/${this.uuid}/player`)
+    //     const treeData = await response.json();
+    //     this.playerTreeData = treeData;
+    //     const serverPlayer = treeData.find(object => object && object.id === this.playerManager.id)
+    //     if (serverPlayer) {
+    //         this.playerManager.updateFromServer(serverPlayer);
+    //     }
+    // }
 
     update() {
         if (!this.isReady) return;
@@ -145,26 +145,22 @@ export class GameScene extends Phaser.Scene {
 
         this.graphics.clear();
 
-        if (this.playerTreeData) {
-            this.drawPlayerTree(this.graphics, this.playerTreeData);
-        }
-
         this.bulletManager.update(this.barriers, this.opponents);
         this.bulletManager.cleanup();
     }
 
-    drawPlayerTree(g, tree) {
-        for (let obj of tree) {
-            if (!obj) continue;
-            if (obj.type === "PLAYER" && obj.id === this.playerManager.id) {
-                continue;
-            }
-            // todo: draw player with health updates
-            if (obj.type === "PLAYER") {
-                const playerCircle = new Phaser.Geom.Circle(obj.centerX, obj.centerY, obj.radius);
-                this.opponents.set(obj.id, playerCircle);
-                this.enemyManager.drawEnemy(obj);
-            }
-        }
-    }
+    // drawPlayerTree(g, tree) {
+    //     for (let obj of tree) {
+    //         if (!obj) continue;
+    //         if (obj.type === "PLAYER" && obj.id === this.playerManager.id) {
+    //             continue;
+    //         }
+    //         // todo: draw player with health updates
+    //         if (obj.type === "PLAYER") {
+    //             const playerCircle = new Phaser.Geom.Circle(obj.centerX, obj.centerY, obj.radius);
+    //             this.opponents.set(obj.id, playerCircle);
+    //             this.enemyManager.drawEnemy(obj);
+    //         }
+    //     }
+    // }
 }
