@@ -12,7 +12,7 @@ class WebSocketClient {
         this.client = new Client({
             webSocketFactory: () => socket,
             reconnectDelay: 5000,
-            debug: str => console.log('[WS]', str)
+            debug: str => null
         });
 
         this.client.onConnect = () => {

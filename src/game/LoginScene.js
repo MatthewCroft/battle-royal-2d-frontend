@@ -8,9 +8,7 @@ export class LoginScene extends Phaser.Scene {
         const token = params.get('token');
          if (token) {
              localStorage.setItem('token', token);
-
              window.history.replaceState({}, document.title, '/');
-
              this.scene.start('MenuScene');
          }
 
@@ -43,9 +41,9 @@ export class LoginScene extends Phaser.Scene {
 
         const oauthBtn = this.add.text(960, 480, 'Login with Google', {
             fontSize: '20px',
-            backgroundColor: '#dddddd',
+            backgroundColor: '#4285F4',
             padding: { x: 15, y: 8 }
-        }).setOrigin(0.5).setInteractive();
+        }).setOrigin(0.5).setInteractive({ useHandCursor: true });
 
         oauthBtn.on('pointerdown', () => {
             window.location.href = 'http://localhost:8081/oauth2/authorization/google'; // adjust to match backend
