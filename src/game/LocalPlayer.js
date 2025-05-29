@@ -95,7 +95,8 @@ export class LocalPlayer extends Phaser.GameObjects.Container {
         await fetch(`/api/quadtree/${this.treeUUID}/player`, {
             method: "PUT",
             headers: {
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${localStorage.getItem("token")}`
             },
             body: JSON.stringify(playerObj)
         });

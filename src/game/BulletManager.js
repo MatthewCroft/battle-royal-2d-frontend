@@ -46,7 +46,8 @@ export class BulletManager {
         await fetch(`/api/quadtree/${this.treeUUID}/bullet`, {
             method: "POST",
             headers: {
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${localStorage.getItem("token")}`
             },
             body: JSON.stringify({
                 type: "BULLET",

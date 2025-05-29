@@ -44,15 +44,14 @@ export class GameScene extends Phaser.Scene {
         this.barriers = new Map();
         this.opponents = new Map();
         this.wallblocks = new Map();
+        const token = localStorage.getItem("token");
 
         fetch(`http://localhost:8080/api/quadtree?uuid=${this.uuid}`, {
-            method: "POST"
-        }).then(async () =>
-            await fetch(`http://localhost:8080/api/quadtree/${this.uuid}`))
-            .then(res => res.json())
-            .then(data => {
-                this.treeData = data;
-            }).then(async () => {
+            method: "POST",
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        }).then(async () => {
             const player = {
                 type: "PLAYER",
                 id: "matt",
@@ -75,7 +74,8 @@ export class GameScene extends Phaser.Scene {
             await fetch(`http://localhost:8080/api/quadtree/${this.uuid}/start`, {
                 method: "PUT",
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify(opponent)
             })
@@ -83,12 +83,18 @@ export class GameScene extends Phaser.Scene {
             await fetch(`http://localhost:8080/api/quadtree/${this.uuid}/start`, {
                 method: "PUT",
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify(player)
-            }).then(async() => {
+            }).then(async () => {
                 //todo: gather walls and create wallBlocks / barriers
-                const response = await fetch(`http://localhost:8080/api/quadtree/${this.uuid}/wall`)
+                const response = await fetch(`http://localhost:8080/api/quadtree/${this.uuid}/wall`,
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    })
                 const treeData = await response.json();
                 this.wallTreeData = treeData;
                 for (let obj of treeData) {
